@@ -120,7 +120,7 @@ app.post("/api/signup", async (req, res) => {
 const attachUser = (req, res, next) => {
   const token = req.headers.authorization;
   if (!token) {
-    return res.status(401).json({ message: "Authentication invalid" });
+    return res.status(401).json({ message: "Authentication invalid :)" });
   }
   const decodedToken = jwtDecode(token.slice(7));
 
