@@ -18,6 +18,8 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+app.use(express.static(path.join(__dirname, "orbit-app/build")));
+
 app.post("/api/authenticate", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -300,7 +302,7 @@ async function connect() {
     console.log("Mongoose error", err);
   }
   app.listen(process.env.PORT || 3001);
-  console.log("API listening on localhost:3001");
+  console.log("API listening on");
 }
 
 connect();
