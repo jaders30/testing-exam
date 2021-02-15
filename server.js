@@ -5,7 +5,7 @@ const cors = require("cors");
 const jwt = require("express-jwt");
 const jwtDecode = require("jwt-decode");
 const mongoose = require("mongoose");
-
+const path = require("path");
 const dashboardData = require("./data/dashboard");
 const User = require("./data/User");
 const InventoryItem = require("./data/InventoryItem");
