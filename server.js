@@ -20,6 +20,14 @@ app.use(bodyParser.json());
 
 app.use(express.static(path.join(__dirname, "orbit-app/build")));
 
+// ---------------- ADD THIS ----------------
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname + "/orbit-app/build/index.html"));
+});
+// --------------------------------
+
 app.post("/api/authenticate", async (req, res) => {
   try {
     const { email, password } = req.body;
