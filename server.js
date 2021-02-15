@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+var router = express.Router();
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const jwt = require("express-jwt");
@@ -19,6 +20,13 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 app.use(express.static(path.join(__dirname, "orbit-app/build")));
+
+app.use(
+  "/",
+  router.get("/", function (req, res, next) {
+    res.render("index", { title: "Express" });
+  })
+);
 
 // ---------------- ADD THIS ----------------
 // The "catchall" handler: for any request that doesn't
