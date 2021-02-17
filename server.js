@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
-var router = express.Router();
+const nodemailer = require("nodemailer");
+const sendgridTransport = require("nodemailer-sendgrid-transport");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const jwt = require("express-jwt");
@@ -11,6 +12,13 @@ const dashboardData = require("./data/dashboard");
 const User = require("./data/User");
 const InventoryItem = require("./data/InventoryItem");
 
+// const transporter = nodemailer.createTransport(
+//   sendgridTransport({
+//     aut: {
+//       api_key: "",
+//     },
+//   })
+// );
 const { createToken, hashPassword, verifyPassword } = require("./util");
 
 const app = express();
@@ -23,9 +31,9 @@ app.post("/api/authenticate", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({
-      email,
-    }).lean();
+    // Enabling the lean option tells Mongoose to skip instantiating a full
+    // Mongoose document and just give you the POJO
+    const user = await User.findOne({ email }).lean();
 
     if (!user) {
       return res.status(403).json({
@@ -66,6 +74,9 @@ app.post("/api/signup", async (req, res) => {
     const { email, firstName, lastName } = req.body;
 
     const hashedPassword = await hashPassword(req.body.password);
+    var dateB = new Date(); // Now
+    dateB.setDate(dateB.getDate() + 30); // Set now + 30 days as the new date
+    const temp = dateB.toGMTString(); // Set now + 30 days as the new date
 
     const userData = {
       email: email.toLowerCase(),
@@ -73,6 +84,7 @@ app.post("/api/signup", async (req, res) => {
       lastName,
       password: hashedPassword,
       role: "admin",
+      passwordExpr: dateB,
     };
 
     const existingEmail = await User.findOne({
@@ -91,15 +103,22 @@ app.post("/api/signup", async (req, res) => {
       const decodedToken = jwtDecode(token);
       const expiresAt = decodedToken.exp;
 
-      const { firstName, lastName, email, role } = savedUser;
+      const { firstName, lastName, email, role, passwordExpr } = savedUser;
 
       const userInfo = {
         firstName,
         lastName,
         email,
         role,
+        passwordExpr,
       };
-
+      // transporter.sendMail({
+      //   to: email,
+      //   from: "prelim-exam.com",
+      //   subject: "Sign Up Succeeded",
+      //   html:
+      //     "<h1> You successfully signed up! </h1><p>Please remember you have to refresh your password after 30 days</p>",
+      // });
       return res.json({
         message: "User created!",
         token,
@@ -120,7 +139,6 @@ app.post("/api/signup", async (req, res) => {
 
 const attachUser = (req, res, next) => {
   const token = req.headers.authorization;
-  console.log(token);
   if (!token) {
     return res.status(401).json({ message: "Authentication invalid :)" });
   }
@@ -177,9 +195,7 @@ app.patch("/api/user-role", async (req, res) => {
 app.get("/api/inventory", requireAuth, requireAdmin, async (req, res) => {
   try {
     const user = req.user.sub;
-    const inventoryItems = await InventoryItem.find({
-      user,
-    });
+    const inventoryItems = await InventoryItem.find({ user });
     res.json(inventoryItems);
   } catch (err) {
     return res.status(400).json({ error: err });
@@ -267,15 +283,9 @@ app.patch("/api/bio", requireAuth, async (req, res) => {
     const { sub } = req.user;
     const { bio } = req.body;
     const updatedUser = await User.findOneAndUpdate(
-      {
-        _id: sub,
-      },
-      {
-        bio,
-      },
-      {
-        new: true,
-      }
+      { _id: sub },
+      { bio },
+      { new: true }
     );
 
     res.json({
@@ -285,6 +295,28 @@ app.patch("/api/bio", requireAuth, async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       message: "There was a problem updating your bio",
+    });
+  }
+});
+
+app.patch("/api/changePassword", requireAuth, async (req, res) => {
+  console.log(req.body);
+  try {
+    const { sub } = req.user;
+    const { password } = req.body;
+    const hashedPassword = await hashPassword(password);
+    const updatedPassword = await User.findOneAndUpdate(
+      { _id: sub },
+      { password: hashedPassword },
+      { new: true }
+    );
+    res.json({
+      message: "Password updated!",
+      password: updatedPassword.password,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      message: "There was a problem updating your password",
     });
   }
 });

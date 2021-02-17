@@ -1,59 +1,67 @@
-import React, { useContext, useState } from 'react';
-import { Form, Formik } from 'formik';
-import * as Yup from 'yup';
-import Card from '../components/common/Card';
-import GradientButton from '../components/common/GradientButton';
-import Hyperlink from '../components/common/Hyperlink';
-import Label from '../components/common/Label';
-import FormInput from '../components/FormInput';
-import { AuthContext } from '../context/AuthContext';
-import GradientBar from './../components/common/GradientBar';
-import FormError from './../components/FormError';
-import FormSuccess from './../components/FormSuccess';
-import { publicFetch } from './../util/fetch';
-import logo from './../images/logo.png';
-import { Redirect } from 'react-router-dom';
+import React, { useContext, useState } from "react";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+import Card from "../components/common/Card";
+import GradientButton from "../components/common/GradientButton";
+import Hyperlink from "../components/common/Hyperlink";
+import Label from "../components/common/Label";
+import FormInput from "../components/FormInput";
+import { AuthContext } from "../context/AuthContext";
+import GradientBar from "./../components/common/GradientBar";
+import FormError from "./../components/FormError";
+import FormSuccess from "./../components/FormSuccess";
+import { publicFetch } from "./../util/fetch";
+import logo from "./../images/logo.png";
+import { Redirect } from "react-router-dom";
 
 const SignupSchema = Yup.object().shape({
-  firstName: Yup.string().required(
-    'First name is required'
-  ),
-  lastName: Yup.string().required('Last name is required'),
-  email: Yup.string()
-    .email('Invalid email')
-    .required('Email is required'),
-  password: Yup.string().required('Password is required')
+  firstName: Yup.string().required("First name is required!"),
+  lastName: Yup.string().required("Last name is required"),
+  email: Yup.string().email("Invalid email").required("Email is required"),
+  password: Yup.string()
+    .matches(/(?=.*[a-z])/, "One lowercase required")
+    .matches(/(?=.*[A-Z])/, "One uppercase required")
+    .matches(/(?=.*[0-9])/, "One number required")
+    .matches(/(?=.*[!@#$%^&*])/, "One special character required")
+    .test("test1", "Password must not contain username", function (val) {
+      const { firstName } = this.parent;
+      return !(val.indexOf(firstName) !== -1);
+    })
+    .test("test2", "Password must not contain lastname", function (val) {
+      const { lastName } = this.parent;
+      return !(val.indexOf(lastName) !== -1);
+    })
+    .min(10, "Minimum of 10 Characters")
+    .required("Password is required"),
+  passwordConfirm: Yup.string()
+    .oneOf([Yup.ref("password")], "Password must be the same!")
+    .required("Required!"),
 });
 
 const Signup = () => {
   const authContext = useContext(AuthContext);
   const [signupSuccess, setSignupSuccess] = useState();
   const [signupError, setSignupError] = useState();
-  const [redirectOnLogin, setRedirectOnLogin] = useState(
-    false
-  );
+  const [redirectOnLogin, setRedirectOnLogin] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
-  const submitCredentials = async credentials => {
+  const submitCredentials = async (credentials) => {
     try {
       setLoginLoading(true);
-      const { data } = await publicFetch.post(
-        `signup`,
-        credentials
-      );
+      const { data } = await publicFetch.post(`signup`, credentials);
 
       authContext.setAuthState(data);
       setSignupSuccess(data.message);
-      setSignupError('');
+      setSignupError("");
 
       setTimeout(() => {
         setRedirectOnLogin(true);
-      }, 700);
+      }, 1000);
     } catch (error) {
       setLoginLoading(false);
       const { data } = error.response;
       setSignupError(data.message);
-      setSignupSuccess('');
+      setSignupSuccess("");
     }
   };
 
@@ -73,35 +81,25 @@ const Signup = () => {
                   Sign up for an account
                 </h2>
                 <p className="text-gray-600 text-center">
-                  Already have an account?{' '}
+                  Already have an account?{" "}
                   <Hyperlink to="login" text="Log in now" />
                 </p>
               </div>
               <Formik
                 initialValues={{
-                  firstName: '',
-                  lastName: '',
-                  email: '',
-                  password: ''
+                  firstName: "",
+                  lastName: "",
+                  email: "",
+                  password: "",
                 }}
-                onSubmit={values =>
-                  submitCredentials(values)
-                }
+                onSubmit={(values) => submitCredentials(values)}
                 validationSchema={SignupSchema}
               >
                 {() => (
                   <Form className="mt-8">
-                    {signupSuccess && (
-                      <FormSuccess text={signupSuccess} />
-                    )}
-                    {signupError && (
-                      <FormError text={signupError} />
-                    )}
-                    <input
-                      type="hidden"
-                      name="remember"
-                      value="true"
-                    />
+                    {signupSuccess && <FormSuccess text={signupSuccess} />}
+                    {signupError && <FormError text={signupError} />}
+                    <input type="hidden" name="remember" value="true" />
                     <div>
                       <div className="flex">
                         <div className="mb-2 mr-2 w-1/2">
@@ -147,6 +145,17 @@ const Signup = () => {
                           name="password"
                           type="password"
                           placeholder="Password"
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1">
+                          <Label text="Confirm Password " />
+                        </div>
+                        <FormInput
+                          ariaLabel="Password"
+                          name="passwordConfirm"
+                          type="password"
+                          placeholder="Confirm Password"
                         />
                       </div>
                     </div>

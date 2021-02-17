@@ -1,77 +1,97 @@
-import React, {
-  useContext,
-  useState,
-  useEffect
-} from 'react';
-import PageTitle from '../components/common/PageTitle';
-import Card from './../components/common/Card';
-import GradientButton from '../components/common/GradientButton';
-import { Formik, Form, Field } from 'formik';
-import { FetchContext } from './../context/FetchContext';
-import FormError from './../components/FormError';
-import FormSuccess from './../components/FormSuccess';
+import React, { useContext, useState } from "react";
+import PageTitle from "../components/common/PageTitle";
+import * as Yup from "yup";
+import FormInput from "../components/FormInput";
+import Card from "./../components/common/Card";
+import GradientButton from "../components/common/GradientButton";
+import { Formik, Form } from "formik";
+import { FetchContext } from "./../context/FetchContext";
+import FormError from "./../components/FormError";
+import FormSuccess from "./../components/FormSuccess";
+import { AuthContext } from "../context/AuthContext";
+const passwordChangeSchema = (firstName, lastName) =>
+  Yup.object().shape({
+    password: Yup.string()
+      .matches(/(?=.*[a-z])/, "One lowercase required")
+      .matches(/(?=.*[A-Z])/, "One uppercase required")
+      .matches(/(?=.*[0-9])/, "One number required")
+      .matches(/(?=.*[!@#$%^&*])/, "One special character required")
+      .test("test1", "Password must not contain username", function (val) {
+        return !(val.indexOf(firstName) !== -1);
+      })
+      .test("test2", "Password must not contain lastname", function (val) {
+        return !(val.indexOf(lastName) !== -1);
+      })
+      .min(10, "Minimum of 10 Characters")
+      .required("Password is required"),
+    passwordConfirm: Yup.string()
+      .oneOf([Yup.ref("password")], "Password must be the same!")
+      .required("Required!"),
+  });
 
 const Settings = () => {
   const fetchContext = useContext(FetchContext);
-  const [bio, setBio] = useState();
-  const [successMessage, setSuccessMessage] = useState();
-  const [errorMessage, setErrorMessage] = useState();
+  const authContext = useContext(AuthContext);
+  const [password, setPassword] = useState();
+  const { token, expiresAt, userInfo } = authContext.authState;
+  const [successMessagePassword, setSuccessMessagePassword] = useState();
+  const [errorMessagePassword, setErrorMessagePassword] = useState();
 
-  useEffect(() => {
-    const getBio = async () => {
-      try {
-        const { data } = await fetchContext.authAxios.get(
-          'bio'
-        );
-        setBio(data.bio);
-      } catch (err) {
-        console.log(err);
-      }
-    };
-    getBio();
-  }, [fetchContext.authAxios]);
-
-  const saveBio = async bio => {
+  const savePassword = async (pass) => {
     try {
       const { data } = await fetchContext.authAxios.patch(
-        'bio',
-        bio
+        "changePassword",
+        pass
       );
-      setErrorMessage(null);
-      setSuccessMessage(data.message);
+      setErrorMessagePassword(null);
+      setSuccessMessagePassword(data.message);
     } catch (err) {
       const { data } = err.response;
-      setSuccessMessage(null);
-      setErrorMessage(data.message);
+      setSuccessMessagePassword(null);
+      setErrorMessagePassword(data.message);
     }
   };
+
   return (
     <>
       <PageTitle title="Settings" />
       <Card>
-        <h2 className="font-bold mb-2">
-          Fill Out Your Bio
-        </h2>
-        {successMessage && (
-          <FormSuccess text={successMessage} />
+        <h2 className="font-bold mb-2">Change Your Password</h2>
+        {successMessagePassword && (
+          <FormSuccess text={successMessagePassword} />
         )}
-        {errorMessage && <FormError text={errorMessage} />}
+        {errorMessagePassword && <FormError text={errorMessagePassword} />}
         <Formik
-          initialValues={{
-            bio
-          }}
-          onSubmit={values => saveBio(values)}
+          initialValues={{ password }}
+          onSubmit={(values) => savePassword(values)}
           enableReinitialize={true}
+          validationSchema={() =>
+            passwordChangeSchema(userInfo.firstName, userInfo.lastName)
+          }
         >
           {() => (
             <Form>
-              <Field
-                className="border border-gray-300 rounded p-1 w-full h-56 mb-2"
-                component="textarea"
-                name="bio"
-                placeholder="Your bio here"
-              />
-              <GradientButton text="Save" type="submit" />
+              <div>
+                <div className="mb-2 ml-2 w-full">
+                  <FormInput
+                    ariaLabel="Password"
+                    name="password"
+                    type="password"
+                    placeholder="New Password"
+                  />
+                </div>
+                <div className="mb-2 ml-2 w-full">
+                  <FormInput
+                    ariaLabel="Password"
+                    name="passwordConfirm"
+                    type="password"
+                    placeholder="Confirm Password"
+                  />
+                </div>
+                <div className="mt-6">
+                  <GradientButton text="Save" type="submit" />
+                </div>
+              </div>
             </Form>
           )}
         </Formik>
